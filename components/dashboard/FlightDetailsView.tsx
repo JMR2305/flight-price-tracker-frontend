@@ -91,6 +91,7 @@ function PriceChart({ points, currency }: { points: PriceHistoryPoint[]; currenc
         <span className="text-2xl font-bold text-gray-900">
           {formatCurrency(last, currency)}
         </span>
+        <INRBadge usd={last} />
         {diff > 0.01 && (
           <span
             className={`flex items-center gap-1 text-xs font-medium ${
@@ -202,8 +203,9 @@ function OffersTable({ offers }: { offers: FlightOffer[] }) {
                   )}
                 </div>
               </td>
-              <td className="py-2.5 text-right font-semibold text-gray-900">
-                {formatCurrency(offer.price, offer.currency)}
+              <td className="py-2.5 text-right">
+                <span className="font-semibold text-gray-900 block">{formatCurrency(offer.price, offer.currency)}</span>
+                <INRBadge usd={offer.price} className="justify-end" />
               </td>
               <td className="py-2.5 text-right text-gray-500">
                 {new Date(offer.departure_time).toLocaleTimeString("en-US", {
