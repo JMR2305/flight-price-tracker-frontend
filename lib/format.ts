@@ -68,3 +68,14 @@ export function formatChartDate(iso: string): string {
     day: "numeric",
   });
 }
+
+  export function formatINR(usdPrice: number | null | undefined, usdToInr: number): string {
+    if (usdPrice == null) return "—";
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(usdPrice * usdToInr);
+  }
+  
