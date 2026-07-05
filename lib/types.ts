@@ -60,6 +60,7 @@ export interface FlightOffer {
   arrival_time: string;
   duration_minutes: number;
   stops: number;
+  airline_logo_url?: string | null;
 }
 
 export interface FlightSearchResult {
