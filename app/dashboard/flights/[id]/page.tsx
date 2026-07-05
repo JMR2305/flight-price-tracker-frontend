@@ -2,13 +2,12 @@ import { FlightDetailsView } from "@/components/dashboard/FlightDetailsView";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { TopNav } from "@/components/layout/TopNav";
 
-export default async function FlightDetailsPage({
+export default function FlightDetailsPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: { id: string };
 }) {
-  const { id } = await params;
-  const flightId = Number(id);
+  const flightId = Number(params.id);
 
   return (
     <div className="flex min-h-screen bg-gray-50">
