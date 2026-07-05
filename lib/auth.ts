@@ -32,11 +32,18 @@ export function clearAuth(): void {
 const BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
 
 async function authRequest<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  const url = `${BASE_URL}${path}`;
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch (networkErr) {
+    const msg = networkErr instanceof Error ? networkErr.message : String(networkErr);
+    throw new Error(`Network error — POST ${url} — ${msg}`);
+  }
 
   if (!res.ok) {
     let detail = `HTTP ${res.status}`;
@@ -46,7 +53,7 @@ async function authRequest<T>(path: string, body: unknown): Promise<T> {
     } catch {
       // ignore
     }
-    const err = new Error(detail) as Error & { status: number };
+    const err = new Error(`${detail} — POST ${url}`) as Error & { status: number };
     err.status = res.status;
     throw err;
   }
