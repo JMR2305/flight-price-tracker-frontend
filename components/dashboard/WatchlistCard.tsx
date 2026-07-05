@@ -1,9 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, RefreshCw, Loader2, Bell, Search, TrendingDown } from "lucide-react";
+import { ArrowRight, RefreshCw, Loader2, Bell, Search, TrendingDown, Trash2, AlertTriangle } from "lucide-react";
 import type { WatchlistItem } from "@/lib/types";
-import { useCheckFlight } from "@/lib/api";
+import { useCheckFlight, useDeleteFlight } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -47,9 +48,13 @@ export function WatchlistCard({ item }: WatchlistCardProps) {
   const router = useRouter();
   const toast = useToast();
   const checkMutation = useCheckFlight();
+  const deleteMutation = useDeleteFlight();
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const isChecking =
     checkMutation.isPending && checkMutation.variables === item.flight_id;
+  const isDeleting =
+    deleteMutation.isPending && deleteMutation.variables === item.flight_id;
 
   function handleCheck() {
     checkMutation.mutate(item.flight_id, {
@@ -62,6 +67,30 @@ export function WatchlistCard({ item }: WatchlistCardProps) {
     });
   }
 
+  function handleDeleteClick() {
+    setConfirmingDelete(true);
+  }
+
+  function handleDeleteCancel() {
+    setConfirmingDelete(false);
+  }
+
+  function handleDeleteConfirm() {
+    deleteMutation.mutate(item.flight_id, {
+      onSuccess: () => {
+        setConfirmingDelete(false);
+        toast(
+          `${item.origin} → ${item.destination} removed from tracking.`,
+          "success",
+        );
+      },
+      onError: () => {
+        setConfirmingDelete(false);
+        toast("Failed to remove flight. Please try again.", "error");
+      },
+    });
+  }
+
   const hasData = item.current_price !== null;
 
   return (
@@ -70,7 +99,7 @@ export function WatchlistCard({ item }: WatchlistCardProps) {
         item.is_active ? "" : "opacity-60"
       }`}
     >
-      {/* Header: route + status badge */}
+      {/* Header: route + status badge + delete icon */}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5 text-gray-900 font-semibold text-base leading-tight">
@@ -90,8 +119,51 @@ export function WatchlistCard({ item }: WatchlistCardProps) {
             )}
           </p>
         </div>
-        <StatusBadge active={item.is_active} />
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <StatusBadge active={item.is_active} />
+          <button
+            onClick={handleDeleteClick}
+            disabled={isDeleting}
+            title="Remove flight"
+            className="p-1 rounded-md text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 disabled:opacity-30"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
+
+      {/* Inline delete confirmation */}
+      {confirmingDelete && (
+        <div className="rounded-lg bg-red-50 border border-red-100 p-3 flex flex-col gap-2.5">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-red-700 font-medium leading-snug">
+              Remove this flight from tracking?
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={handleDeleteCancel}
+              disabled={isDeleting}
+              className="flex-1 text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-white transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+              className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isDeleting ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <Trash2 className="w-3 h-3" />
+              )}
+              {isDeleting ? "Removing…" : "Remove"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Current price */}
       <div>
@@ -178,7 +250,7 @@ export function WatchlistCard({ item }: WatchlistCardProps) {
       <div className="pt-1 border-t border-gray-100 flex gap-2">
         <button
           onClick={handleCheck}
-          disabled={isChecking}
+          disabled={isChecking || isDeleting}
           className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isChecking ? (
@@ -190,7 +262,8 @@ export function WatchlistCard({ item }: WatchlistCardProps) {
         </button>
         <button
           onClick={() => router.push(`/dashboard/flights/${item.flight_id}`)}
-          className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg bg-brand-600 text-white hover:bg-brand-700 transition-colors"
+          disabled={isDeleting}
+          className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg bg-brand-600 text-white hover:bg-brand-700 transition-colors disabled:opacity-50"
         >
           View Details
           <ArrowRight className="w-3.5 h-3.5" />
