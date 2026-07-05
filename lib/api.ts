@@ -211,6 +211,7 @@ export function useDeleteFlight() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["flights"] });
       qc.invalidateQueries({ queryKey: ["stats"] });
+      qc.invalidateQueries({ queryKey: ["watchlist"] });
     },
   });
 }
