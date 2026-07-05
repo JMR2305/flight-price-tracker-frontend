@@ -24,7 +24,9 @@ import { ChartSkeleton, TableSkeleton, TimelineSkeleton, Skeleton } from "@/comp
 import {
   formatCurrency, formatDate, formatDateTime,
   formatRelativeTime, formatDuration, formatChartDate,
-} from "@/lib/format";
+  formatINR,
+  formatINR,
+import { useUSDToINR } from "@/lib/use-exchange-rate";
 import type { FlightDetails, FlightOffer, NotificationRecord, PriceHistoryPoint } from "@/lib/types";
 
 // ── Chart helpers ─────────────────────────────────────────────────────────────
@@ -332,7 +334,7 @@ function PageSkeleton() {
 
 // ── INR badge helper ────────────────────────────────────────────────────────
 
-  function INRBadge({ usd, className = "" }: { usd: number | null; className?: string }) {
+function INRBadge({ usd, className = "" }: { usd: number | null; className?: string }) {
     const inrRate = useUSDToINR();
     if (usd == null) return null;
     return (
@@ -340,9 +342,9 @@ function PageSkeleton() {
         ≈ {formatINR(usd, inrRate)}
       </span>
     );
-  }
+}
 
-  // ── Main view ─────────────────────────────────────────────────────────────────
+// ── Main view ─────────────────────────────────────────────────────────────────
 
 export function FlightDetailsView({ flightId }: { flightId: number }) {
   const router = useRouter();
