@@ -25,7 +25,7 @@ import {
   formatCurrency, formatDate, formatDateTime,
   formatRelativeTime, formatDuration, formatChartDate,
   formatINR,
-  formatINR,
+} from "@/lib/format";
 import { useUSDToINR } from "@/lib/use-exchange-rate";
 import type { FlightDetails, FlightOffer, NotificationRecord, PriceHistoryPoint } from "@/lib/types";
 
