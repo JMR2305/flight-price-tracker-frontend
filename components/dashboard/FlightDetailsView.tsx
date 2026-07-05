@@ -178,13 +178,27 @@ function OffersTable({ offers }: { offers: FlightOffer[] }) {
                 i === 0 ? "bg-emerald-50/40" : ""
               }`}
             >
-              <td className="py-2.5 pl-1 font-medium text-gray-700">
-                {offer.airline}
-                {i === 0 && (
-                  <span className="ml-1.5 text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
-                    Cheapest
-                  </span>
-                )}
+              <td className="py-2.5 pl-1">
+                <div className="flex items-center gap-2">
+                  {offer.airline_logo_url ? (
+                    <img
+                      src={offer.airline_logo_url}
+                      alt={offer.airline}
+                      className="h-5 w-auto max-w-[48px] object-contain flex-shrink-0"
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                    />
+                  ) : (
+                    <span className="inline-flex items-center justify-center h-5 w-5 rounded bg-gray-100 text-gray-400 text-[9px] font-bold flex-shrink-0">
+                      {offer.airline.slice(0, 2).toUpperCase()}
+                    </span>
+                  )}
+                  <span className="font-medium text-gray-700">{offer.airline}</span>
+                  {i === 0 && (
+                    <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
+                      Cheapest
+                    </span>
+                  )}
+                </div>
               </td>
               <td className="py-2.5 text-right font-semibold text-gray-900">
                 {formatCurrency(offer.price, offer.currency)}
