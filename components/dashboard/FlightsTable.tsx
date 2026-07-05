@@ -14,6 +14,8 @@ import { AddFlightModal } from "./AddFlightModal";
 import { EditFlightModal } from "./EditFlightModal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
+  import { useUSDToINR } from "@/lib/use-exchange-rate";
+  import { formatINR } from "@/lib/format";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", {
@@ -42,6 +44,7 @@ function SkeletonRow() {
 
 export function FlightsTable() {
   const toast = useToast();
+    const inrRate = useUSDToINR();
   const [addOpen, setAddOpen] = useState(false);
   const [editFlight, setEditFlight] = useState<Flight | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Flight | null>(null);
