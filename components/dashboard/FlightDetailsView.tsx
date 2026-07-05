@@ -330,7 +330,19 @@ function PageSkeleton() {
   );
 }
 
-// ── Main view ─────────────────────────────────────────────────────────────────
+// ── INR badge helper ────────────────────────────────────────────────────────
+
+  function INRBadge({ usd, className = "" }: { usd: number | null; className?: string }) {
+    const inrRate = useUSDToINR();
+    if (usd == null) return null;
+    return (
+      <span className={`flex items-center gap-0.5 text-[10px] text-gray-400 mt-0.5 ${className}`}>
+        ≈ {formatINR(usd, inrRate)}
+      </span>
+    );
+  }
+
+  // ── Main view ─────────────────────────────────────────────────────────────────
 
 export function FlightDetailsView({ flightId }: { flightId: number }) {
   const router = useRouter();
