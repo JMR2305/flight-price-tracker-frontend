@@ -59,7 +59,7 @@ function VerticalTick(props: Record<string, unknown>) {
   const y = props.y as number;
   const payload = props.payload as { value: string };
   return (
-    <text x={x} y={y + 4} textAnchor="end" fill="#94a3b8" fontSize={9}
+    <text x={x} y={y + 4} textAnchor="end" fill="#94a3b8" fontSize={9} fontWeight={700}
       transform={`rotate(-90, ${x}, ${y + 4})`}>
       {payload.value}
     </text>
@@ -169,7 +169,7 @@ function PriceChart({ points, currency }: { points: PriceHistoryPoint[]; currenc
           />
           <YAxis
             domain={[yMin, yMax]}
-            tick={{ fontSize: 10, fill: "#94a3b8" }}
+            tick={{ fontSize: 10, fill: "#94a3b8", fontWeight: 700 }}
             axisLine={false}
             tickLine={false}
             width={54}
