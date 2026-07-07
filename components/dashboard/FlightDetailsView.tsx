@@ -156,8 +156,8 @@ function PriceChart({ points, currency }: { points: PriceHistoryPoint[]; currenc
         )}
       </div>
 
-      <ResponsiveContainer width="100%" height={230}>
-        <LineChart data={rows} margin={{ top: 28, right: 12, bottom: 70, left: 0 }}>
+      <ResponsiveContainer width="100%" height={380}>
+        <LineChart data={rows} margin={{ top: 32, right: 16, bottom: 80, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
           <XAxis
             dataKey="date"
