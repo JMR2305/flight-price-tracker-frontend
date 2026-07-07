@@ -1,14 +1,17 @@
 /** @type {import('next').NextConfig} */
   const nextConfig = {
     output: "standalone",
-    // Force a unique build ID each deploy so Vercel never serves stale cached bundles
+    // Unique build ID per deploy — prevents Vercel from reusing stale compiled bundles
     generateBuildId: async () => `build-${Date.now()}`,
     async headers() {
       return [
         {
-          source: "/(.*)",
+          // Prevent caching of HTML pages only (not _next/static assets)
+          source: "/((?!_next|favicon\.ico).*)",
           headers: [
-            { key: "Cache-Control", value: "no-store" },
+            { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+            { key: "Pragma", value: "no-cache" },
+            { key: "Expires", value: "0" },
           ],
         },
       ];
