@@ -505,7 +505,7 @@ export function FlightDetailsView({ flightId }: { flightId: number }) {
       {/* ── Price history chart ── */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <h2 className="text-sm font-semibold text-gray-900 mb-0.5">Price History</h2>
-        <p className="text-xs text-gray-400 mb-5">Lowest fare per search run</p>
+        <p className="text-xs text-gray-400 mb-5">Only price-change points shown</p>
         <PriceChart points={price_history} currency={stats.currency} />
       </div>
 
