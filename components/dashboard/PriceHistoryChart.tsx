@@ -53,8 +53,27 @@
     );
   }
 
-  // Renders each dot; also draws a small price label ONLY when price changed vs previous point.
-  // overflow="visible" on <g> lets the text escape the Recharts clip-path boundary.
+  // Vertical tick for X axis — avoids TypeScript issues with passing angle in the tick object
+  function VerticalTick(props: Record<string, unknown>) {
+    const x = props.x as number;
+    const y = props.y as number;
+    const payload = props.payload as { value: string };
+    return (
+      <text
+        x={x}
+        y={y + 4}
+        textAnchor="end"
+        fill="#94a3b8"
+        fontSize={9}
+        transform={`rotate(-90, ${x}, ${y + 4})`}
+      >
+        {payload.value}
+      </text>
+    );
+  }
+
+  // Renders each dot + a tiny price label only when price changed vs previous point.
+  // overflow="visible" prevents Recharts clip-path from cutting off the label text.
   function makeDotRenderer(rows: ChartRow[]) {
     return function DotRenderer(props: Record<string, unknown>) {
       const cx = props.cx as number | undefined;
@@ -65,8 +84,9 @@
       if (cx == null || cy == null || index == null || !payload) return <g />;
 
       const prevPrice = index > 0 ? rows[index - 1]?.price : undefined;
-      const changed = prevPrice !== undefined && Math.round(prevPrice * 100) !== Math.round(payload.price * 100);
-      const isDown  = changed && payload.price < prevPrice!;
+      const changed = prevPrice !== undefined &&
+        Math.round(prevPrice * 100) !== Math.round(payload.price * 100);
+      const isDown = changed && payload.price < prevPrice!;
 
       return (
         <g overflow="visible">
@@ -150,22 +170,24 @@
             </div>
 
             <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={rows} margin={{ top: 24, right: 8, bottom: 60, left: 0 }}>
+              <LineChart data={rows} margin={{ top: 24, right: 8, bottom: 64, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                 <XAxis
                   dataKey="date"
-                  tick={{ fontSize: 9, fill: "#94a3b8", angle: -90, textAnchor: "end" }}
+                  tick={VerticalTick}
                   axisLine={false}
                   tickLine={false}
                   interval="preserveStartEnd"
-                  height={65}
+                  height={68}
                 />
                 <YAxis
                   tick={{ fontSize: 10, fill: "#94a3b8" }}
                   axisLine={false}
                   tickLine={false}
                   width={50}
-                  tickFormatter={(v: number) => currency ? `${currency} ${v.toFixed(0)}` : String(v)}
+                  tickFormatter={(v: number) =>
+                    currency ? `${currency} ${v.toFixed(0)}` : String(v)
+                  }
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <Line
