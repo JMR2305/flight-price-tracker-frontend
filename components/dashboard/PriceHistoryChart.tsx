@@ -6,6 +6,7 @@ import {
   ResponsiveContainer,
   LineChart,
   Line,
+  LabelList,
   CartesianGrid,
   XAxis,
   YAxis,
@@ -68,6 +69,32 @@ export function PriceHistoryChart() {
   const diff = hasData && first !== undefined && last !== undefined ? first - last : 0;
   const currency = rows[0]?.currency ?? null;
 
+  // Render a price label only when the price differs from the previous point
+  const renderPriceChangeLabel = (props: Record<string, unknown>) => {
+    const { x, y, value, index } = props as {
+      x: number;
+      y: number;
+      value: number;
+      index: number;
+    };
+    if (index === 0) return null;
+    const prevPrice = rows[index - 1]?.price;
+    if (prevPrice === undefined || prevPrice === value) return null;
+    const isDown = value < prevPrice;
+    return (
+      <text
+        x={x}
+        y={(y as number) - 10}
+        textAnchor="middle"
+        fontSize={9}
+        fontWeight={700}
+        fill={isDown ? "#10b981" : "#ef4444"}
+      >
+        {formatCurrency(value, rows[index]?.currency)}
+      </text>
+    );
+  };
+
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5">
       <div className="flex items-start justify-between mb-5">
@@ -119,8 +146,8 @@ export function PriceHistoryChart() {
             )}
           </div>
 
-          <ResponsiveContainer width="100%" height={160}>
-            <LineChart data={rows} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+          <ResponsiveContainer width="100%" height={180}>
+            <LineChart data={rows} margin={{ top: 20, right: 4, bottom: 0, left: 0 }}>
               <defs>
                 <linearGradient id="phGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.12} />
@@ -153,7 +180,9 @@ export function PriceHistoryChart() {
                 dot={{ r: 3.5, fill: "white", stroke: "#3b82f6", strokeWidth: 2 }}
                 activeDot={{ r: 5, fill: "#3b82f6" }}
                 animationDuration={600}
-              />
+              >
+                <LabelList content={renderPriceChangeLabel} />
+              </Line>
             </LineChart>
           </ResponsiveContainer>
 
