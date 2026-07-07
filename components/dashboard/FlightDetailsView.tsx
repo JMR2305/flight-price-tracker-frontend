@@ -14,6 +14,7 @@ import {
   XAxis,
   YAxis,
   Tooltip,
+  Customized,
 } from "recharts";
 import { useFlightDetails, useCheckFlight } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
@@ -38,13 +39,56 @@ interface ChartRow {
   offerCount: number;
 }
 
-function toChartRows(points: PriceHistoryPoint[]): ChartRow[] {
-  return points.map((p) => ({
+/** Only keep points where price changed from the previous record */
+function toPriceChangeRows(allPoints: PriceHistoryPoint[]): ChartRow[] {
+  const all: ChartRow[] = allPoints.map((p) => ({
     date: formatChartDate(p.searched_at),
     price: p.min_price,
     currency: p.currency,
     offerCount: p.offer_count,
   }));
+  return all.filter((row, i, arr) => {
+    if (i === 0) return true;
+    return Math.round(row.price * 100) !== Math.round(arr[i - 1].price * 100);
+  });
+}
+
+/** Vertical tick for XAxis — avoids TS issues with angle inside tick object */
+function VerticalTick(props: Record<string, unknown>) {
+  const x = props.x as number;
+  const y = props.y as number;
+  const payload = props.payload as { value: string };
+  return (
+    <text x={x} y={y + 4} textAnchor="end" fill="#94a3b8" fontSize={9}
+      transform={`rotate(-90, ${x}, ${y + 4})`}>
+      {payload.value}
+    </text>
+  );
+}
+
+/** Labels rendered in the root SVG layer (outside Recharts clip-path) */
+function PriceLabels(props: Record<string, unknown>) {
+  const items = props.formattedGraphicalItems as
+    | Array<{ props: { points: Array<{ x: number; y: number; payload: ChartRow }> } }>
+    | undefined;
+  const pts = items?.[0]?.props?.points;
+  if (!pts?.length) return null;
+  return (
+    <g>
+      {pts.map((pt, i) => {
+        const prev = pts[i - 1];
+        const isFirst = i === 0;
+        const isDown = !isFirst && prev && pt.payload.price < prev.payload.price;
+        const color = isFirst ? "#64748b" : isDown ? "#10b981" : "#ef4444";
+        return (
+          <text key={i} x={pt.x} y={pt.y - 10} textAnchor="middle"
+            fontSize={8} fontWeight={700} fill={color} style={{ pointerEvents: "none" }}>
+            {pt.payload.currency}{pt.payload.price.toFixed(0)}
+          </text>
+        );
+      })}
+    </g>
+  );
 }
 
 interface CustomTooltipProps {
@@ -68,7 +112,7 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
 // ── Price chart ───────────────────────────────────────────────────────────────
 
 function PriceChart({ points, currency }: { points: PriceHistoryPoint[]; currency: string | null }) {
-  const rows = toChartRows(points);
+  const rows = toPriceChangeRows(points);
 
   if (rows.length === 0) {
     return (
@@ -84,6 +128,13 @@ function PriceChart({ points, currency }: { points: PriceHistoryPoint[]; currenc
   const last = rows[rows.length - 1].price;
   const dropped = last < first;
   const diff = Math.abs(first - last);
+
+  const prices = rows.map((r) => r.price);
+  const minPrice = Math.min(...prices);
+  const maxPrice = Math.max(...prices);
+  const priceRange = maxPrice - minPrice || maxPrice * 0.1 || 1;
+  const yMin = Math.max(0, Math.floor(minPrice - priceRange * 0.1));
+  const yMax = Math.ceil(maxPrice + priceRange * 0.28);
 
   return (
     <div>
@@ -109,17 +160,19 @@ function PriceChart({ points, currency }: { points: PriceHistoryPoint[]; currenc
         )}
       </div>
 
-      <ResponsiveContainer width="100%" height={180}>
-        <LineChart data={rows} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+      <ResponsiveContainer width="100%" height={230}>
+        <LineChart data={rows} margin={{ top: 28, right: 12, bottom: 70, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
           <XAxis
             dataKey="date"
-            tick={{ fontSize: 10, fill: "#94a3b8" }}
+            tick={VerticalTick}
             axisLine={false}
             tickLine={false}
-            interval="preserveStartEnd"
+            interval={0}
+            height={72}
           />
           <YAxis
+            domain={[yMin, yMax]}
             tick={{ fontSize: 10, fill: "#94a3b8" }}
             axisLine={false}
             tickLine={false}
@@ -133,16 +186,17 @@ function PriceChart({ points, currency }: { points: PriceHistoryPoint[]; currenc
             type="monotone"
             dataKey="price"
             stroke="#3b82f6"
-            strokeWidth={2.5}
-            dot={{ r: 3.5, fill: "white", stroke: "#3b82f6", strokeWidth: 2 }}
+            strokeWidth={2}
+            dot={{ r: 3.5, fill: "white", stroke: "#3b82f6", strokeWidth: 1.5 }}
             activeDot={{ r: 5, fill: "#3b82f6" }}
-            animationDuration={600}
+            isAnimationActive={false}
           />
+          <Customized component={PriceLabels} />
         </LineChart>
       </ResponsiveContainer>
 
-      <p className="text-xs text-gray-400 mt-3 text-right">
-        {points.length} search run{points.length !== 1 ? "s" : ""} recorded
+      <p className="text-xs text-gray-400 mt-1 text-right">
+        {rows.length} price change{rows.length !== 1 ? "s" : ""} · {points.length} total checks
       </p>
     </div>
   );
