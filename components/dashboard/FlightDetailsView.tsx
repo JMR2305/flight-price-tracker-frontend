@@ -129,12 +129,8 @@ function PriceChart({ points, currency }: { points: PriceHistoryPoint[]; currenc
   const dropped = last < first;
   const diff = Math.abs(first - last);
 
-  const prices = rows.map((r) => r.price);
-  const minPrice = Math.min(...prices);
-  const maxPrice = Math.max(...prices);
-  const priceRange = maxPrice - minPrice || maxPrice * 0.1 || 1;
-  const yMin = Math.max(0, Math.floor(minPrice - priceRange * 0.1));
-  const yMax = Math.ceil(maxPrice + priceRange * 0.28);
+  const yMin = 0;
+  const yMax = 500;
 
   return (
     <div>
