@@ -25,14 +25,19 @@
     offerCount: number;
   }
 
-  function toChartRows(points: PriceHistoryPoint[]): ChartRow[] {
-    return points.map((p) => ({
+  /** Keep only points where price differs from the previous point */
+  function toPriceChangeRows(points: PriceHistoryPoint[]): ChartRow[] {
+    const all: ChartRow[] = points.map((p) => ({
       date: formatChartDate(p.searched_at),
       price: p.min_price,
       rawDate: p.searched_at,
       currency: p.currency,
       offerCount: p.offer_count,
     }));
+    return all.filter((row, i, arr) => {
+      if (i === 0) return true;
+      return Math.round(row.price * 100) !== Math.round(arr[i - 1].price * 100);
+    });
   }
 
   interface CustomTooltipProps {
@@ -53,7 +58,6 @@
     );
   }
 
-  // Vertical tick for X axis — avoids TypeScript issues with passing angle in the tick object
   function VerticalTick(props: Record<string, unknown>) {
     const x = props.x as number;
     const y = props.y as number;
@@ -72,38 +76,39 @@
     );
   }
 
-  // Renders each dot + a tiny price label only when price changed vs previous point.
-  // overflow="visible" prevents Recharts clip-path from cutting off the label text.
+  /**
+   * Each dot in the filtered data is guaranteed to be a price change point.
+   * We always show the price label.
+   * Labels render at cy-14; Y domain is padded 25% above max so the highest
+   * dot is never at the very top edge of the clip rect.
+   */
   function makeDotRenderer(rows: ChartRow[]) {
     return function DotRenderer(props: Record<string, unknown>) {
-      const cx = props.cx as number | undefined;
-      const cy = props.cy as number | undefined;
-      const index = props.index as number | undefined;
+      const cx      = props.cx as number | undefined;
+      const cy      = props.cy as number | undefined;
+      const index   = props.index as number | undefined;
       const payload = props.payload as ChartRow | undefined;
 
       if (cx == null || cy == null || index == null || !payload) return <g />;
 
       const prevPrice = index > 0 ? rows[index - 1]?.price : undefined;
-      const changed = prevPrice !== undefined &&
-        Math.round(prevPrice * 100) !== Math.round(payload.price * 100);
-      const isDown = changed && payload.price < prevPrice!;
+      const isFirst   = index === 0;
+      const isDown    = !isFirst && prevPrice !== undefined && payload.price < prevPrice;
+      const color     = isFirst ? "#64748b" : isDown ? "#10b981" : "#ef4444";
 
       return (
-        <g overflow="visible">
-          <circle cx={cx} cy={cy} r={3} fill="white" stroke="#3b82f6" strokeWidth={1.5} />
-          {changed && (
-            <text
-              x={cx}
-              y={cy - 8}
-              textAnchor="middle"
-              fontSize={7}
-              fontWeight={600}
-              fill={isDown ? "#10b981" : "#ef4444"}
-              style={{ pointerEvents: "none" }}
-            >
-              {payload.currency} {payload.price.toFixed(0)}
-            </text>
-          )}
+        <g>
+          <circle cx={cx} cy={cy} r={3.5} fill="white" stroke="#3b82f6" strokeWidth={1.5} />
+          <text
+            x={cx}
+            y={cy - 10}
+            textAnchor="middle"
+            fontSize={8}
+            fontWeight={700}
+            fill={color}
+          >
+            {payload.currency}{payload.price.toFixed(0)}
+          </text>
         </g>
       );
     };
@@ -114,24 +119,35 @@
     const [selectedId, setSelectedId] = useState<number>(1);
     const { data: history, isLoading } = usePriceHistory(selectedId);
 
-    const points = history?.points ?? [];
-    const rows = toChartRows(points);
+    const points  = history?.points ?? [];
+    const rows    = toPriceChangeRows(points);
     const hasData = rows.length > 0;
 
-    const first = rows[0]?.price;
-    const last  = rows[rows.length - 1]?.price;
+    const first   = rows[0]?.price;
+    const last    = rows[rows.length - 1]?.price;
     const dropped = hasData && first !== undefined && last !== undefined && last < first;
     const diff    = hasData && first !== undefined && last !== undefined ? first - last : 0;
     const currency = rows[0]?.currency ?? null;
 
+    // Y domain: 10% below min, 28% above max — ensures even the top dot has room for its label
+    const prices   = rows.map((r) => r.price);
+    const minPrice = prices.length ? Math.min(...prices) : 0;
+    const maxPrice = prices.length ? Math.max(...prices) : 0;
+    const range    = maxPrice - minPrice || maxPrice * 0.1 || 1;
+    const yMin     = Math.max(0, Math.floor(minPrice - range * 0.1));
+    const yMax     = Math.ceil(maxPrice + range * 0.28);
+
     const DotRenderer = makeDotRenderer(rows);
+
+    // Total checks before filtering (for the footer count)
+    const totalChecks = history?.points?.length ?? 0;
 
     return (
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <div className="flex items-start justify-between mb-5">
           <div>
             <h2 className="text-sm font-semibold text-gray-900">Price History</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Lowest fare per check run</p>
+            <p className="text-xs text-gray-400 mt-0.5">Points shown only when price changed</p>
           </div>
           <select
             value={selectedId}
@@ -169,22 +185,23 @@
               )}
             </div>
 
-            <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={rows} margin={{ top: 24, right: 8, bottom: 64, left: 0 }}>
+            <ResponsiveContainer width="100%" height={230}>
+              <LineChart data={rows} margin={{ top: 28, right: 10, bottom: 68, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                 <XAxis
                   dataKey="date"
                   tick={VerticalTick}
                   axisLine={false}
                   tickLine={false}
-                  interval="preserveStartEnd"
-                  height={68}
+                  interval={0}
+                  height={70}
                 />
                 <YAxis
+                  domain={[yMin, yMax]}
                   tick={{ fontSize: 10, fill: "#94a3b8" }}
                   axisLine={false}
                   tickLine={false}
-                  width={50}
+                  width={52}
                   tickFormatter={(v: number) =>
                     currency ? `${currency} ${v.toFixed(0)}` : String(v)
                   }
@@ -196,14 +213,14 @@
                   stroke="#3b82f6"
                   strokeWidth={2}
                   dot={DotRenderer}
-                  activeDot={{ r: 4, fill: "#3b82f6" }}
-                  animationDuration={600}
+                  activeDot={{ r: 5, fill: "#3b82f6" }}
+                  isAnimationActive={false}
                 />
               </LineChart>
             </ResponsiveContainer>
 
             <p className="text-xs text-gray-400 mt-1 text-right">
-              {points.length} check{points.length !== 1 ? "s" : ""} recorded
+              {rows.length} price change{rows.length !== 1 ? "s" : ""} · {totalChecks} total checks
             </p>
           </>
         )}
