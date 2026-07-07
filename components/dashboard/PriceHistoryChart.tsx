@@ -6,7 +6,6 @@ import {
   ResponsiveContainer,
   LineChart,
   Line,
-  LabelList,
   CartesianGrid,
   XAxis,
   YAxis,
@@ -54,6 +53,47 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
   );
 }
 
+interface CustomDotProps {
+  cx?: number;
+  cy?: number;
+  index?: number;
+  payload?: ChartRow;
+  rows: ChartRow[];
+}
+
+function CustomDot({ cx, cy, index, payload, rows }: CustomDotProps) {
+  if (cx == null || cy == null || index == null || !payload) return null;
+
+  const prevPrice = index > 0 ? rows[index - 1]?.price : undefined;
+  const priceChanged = prevPrice !== undefined && prevPrice !== payload.price;
+  const isDown = priceChanged && payload.price < prevPrice!;
+
+  return (
+    <g>
+      <circle
+        cx={cx}
+        cy={cy}
+        r={3.5}
+        fill="white"
+        stroke="#3b82f6"
+        strokeWidth={2}
+      />
+      {priceChanged && (
+        <text
+          x={cx}
+          y={cy - 10}
+          textAnchor="middle"
+          fontSize={9}
+          fontWeight={700}
+          fill={isDown ? "#10b981" : "#ef4444"}
+        >
+          {formatCurrency(payload.price, payload.currency)}
+        </text>
+      )}
+    </g>
+  );
+}
+
 export function PriceHistoryChart() {
   const { data: flights } = useFlights();
   const [selectedId, setSelectedId] = useState<number>(1);
@@ -68,32 +108,6 @@ export function PriceHistoryChart() {
   const dropped = hasData && first !== undefined && last !== undefined && last < first;
   const diff = hasData && first !== undefined && last !== undefined ? first - last : 0;
   const currency = rows[0]?.currency ?? null;
-
-  // Render a price label only when the price differs from the previous point
-  const renderPriceChangeLabel = (props: Record<string, unknown>) => {
-    const { x, y, value, index } = props as {
-      x: number;
-      y: number;
-      value: number;
-      index: number;
-    };
-    if (index === 0) return null;
-    const prevPrice = rows[index - 1]?.price;
-    if (prevPrice === undefined || prevPrice === value) return null;
-    const isDown = value < prevPrice;
-    return (
-      <text
-        x={x}
-        y={(y as number) - 10}
-        textAnchor="middle"
-        fontSize={9}
-        fontWeight={700}
-        fill={isDown ? "#10b981" : "#ef4444"}
-      >
-        {formatCurrency(value, rows[index]?.currency)}
-      </text>
-    );
-  };
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5">
@@ -146,8 +160,8 @@ export function PriceHistoryChart() {
             )}
           </div>
 
-          <ResponsiveContainer width="100%" height={180}>
-            <LineChart data={rows} margin={{ top: 20, right: 4, bottom: 0, left: 0 }}>
+          <ResponsiveContainer width="100%" height={210}>
+            <LineChart data={rows} margin={{ top: 20, right: 8, bottom: 60, left: 0 }}>
               <defs>
                 <linearGradient id="phGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.12} />
@@ -157,10 +171,12 @@ export function PriceHistoryChart() {
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
               <XAxis
                 dataKey="date"
-                tick={{ fontSize: 10, fill: "#94a3b8" }}
+                tick={{ fontSize: 9, fill: "#94a3b8", angle: -90, textAnchor: "end" }}
                 axisLine={false}
                 tickLine={false}
                 interval="preserveStartEnd"
+                height={65}
+                dy={4}
               />
               <YAxis
                 tick={{ fontSize: 10, fill: "#94a3b8" }}
@@ -177,12 +193,15 @@ export function PriceHistoryChart() {
                 dataKey="price"
                 stroke="#3b82f6"
                 strokeWidth={2.5}
-                dot={{ r: 3.5, fill: "white", stroke: "#3b82f6", strokeWidth: 2 }}
+                dot={(props: Record<string, unknown>) => (
+                  <CustomDot
+                    {...(props as CustomDotProps)}
+                    rows={rows}
+                  />
+                )}
                 activeDot={{ r: 5, fill: "#3b82f6" }}
                 animationDuration={600}
-              >
-                <LabelList content={renderPriceChangeLabel} />
-              </Line>
+              />
             </LineChart>
           </ResponsiveContainer>
 
