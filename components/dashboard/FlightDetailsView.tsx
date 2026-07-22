@@ -39,18 +39,65 @@ interface ChartRow {
   offerCount: number;
 }
 
-/** Only keep points where price changed from the previous record */
-function toPriceChangeRows(allPoints: PriceHistoryPoint[]): ChartRow[] {
-  const all: ChartRow[] = allPoints.map((p) => ({
+/**
+ * Reduce chart points:
+ *  - Historical days  → only the daily min-price and max-price point (sorted by time).
+ *  - Today            → one point per 3-hour bucket (0h, 3h, 6h, … 21h).
+ */
+function toSmartChartRows(allPoints: PriceHistoryPoint[]): ChartRow[] {
+  if (allPoints.length === 0) return [];
+
+  const toRow = (p: PriceHistoryPoint): ChartRow => ({
     date: formatChartDate(p.searched_at),
     price: p.min_price,
     currency: p.currency,
     offerCount: p.offer_count,
-  }));
-  return all.filter((row, i, arr) => {
-    if (i === 0) return true;
-    return Math.round(row.price * 100) !== Math.round(arr[i - 1].price * 100);
   });
+
+  // Determine today's date string (YYYY-MM-DD) in local time
+  const todayKey = new Date().toISOString().slice(0, 10);
+
+  // Group points by calendar day
+  const byDay = new Map<string, PriceHistoryPoint[]>();
+  for (const p of allPoints) {
+    const day = new Date(p.searched_at).toISOString().slice(0, 10);
+    if (!byDay.has(day)) byDay.set(day, []);
+    byDay.get(day)!.push(p);
+  }
+
+  const result: ChartRow[] = [];
+
+  for (const [day, pts] of Array.from(byDay.entries()).sort()) {
+    if (day === todayKey) {
+      // Today: one point per 3-hour bucket, keep earliest in each bucket
+      const buckets = new Map<number, PriceHistoryPoint>();
+      for (const p of pts) {
+        const h = new Date(p.searched_at).getHours();
+        const bucket = Math.floor(h / 3) * 3;
+        if (!buckets.has(bucket)) buckets.set(bucket, p);
+      }
+      for (const bucket of Array.from(buckets.keys()).sort((a, b) => a - b)) {
+        result.push(toRow(buckets.get(bucket)!));
+      }
+    } else {
+      // Historical day: min-price point + max-price point (deduped, sorted by time)
+      let minPt = pts[0];
+      let maxPt = pts[0];
+      for (const p of pts) {
+        if (p.min_price < minPt.min_price) minPt = p;
+        if (p.min_price > maxPt.min_price) maxPt = p;
+      }
+      const isSame = minPt.searched_at === maxPt.searched_at;
+      const sorted = isSame
+        ? [minPt]
+        : [minPt, maxPt].sort(
+            (a, b) => new Date(a.searched_at).getTime() - new Date(b.searched_at).getTime()
+          );
+      for (const p of sorted) result.push(toRow(p));
+    }
+  }
+
+  return result;
 }
 
 /** Vertical tick for XAxis — avoids TS issues with angle inside tick object */
@@ -112,7 +159,7 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
 // ── Price chart ───────────────────────────────────────────────────────────────
 
 function PriceChart({ points, currency }: { points: PriceHistoryPoint[]; currency: string | null }) {
-  const rows = toPriceChangeRows(points);
+  const rows = toSmartChartRows(points);
 
   if (rows.length === 0) {
     return (
@@ -192,7 +239,7 @@ function PriceChart({ points, currency }: { points: PriceHistoryPoint[]; currenc
       </ResponsiveContainer>
 
       <p className="text-xs text-gray-400 mt-1 text-right">
-        {rows.length} price change{rows.length !== 1 ? "s" : ""} · {points.length} total checks
+        {rows.length} chart point{rows.length !== 1 ? "s" : ""} · {points.length} total checks
       </p>
     </div>
   );
@@ -555,7 +602,7 @@ export function FlightDetailsView({ flightId }: { flightId: number }) {
       {/* ── Price history chart ── */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <h2 className="text-sm font-semibold text-gray-900 mb-0.5">Price History</h2>
-        <p className="text-xs text-gray-400 mb-5">Only price-change points shown</p>
+        <p className="text-xs text-gray-400 mb-5">Historical: daily min &amp; max · Today: 3-hour intervals</p>
         <PriceChart points={price_history} currency={stats.currency} />
       </div>
 
