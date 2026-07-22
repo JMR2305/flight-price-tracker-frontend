@@ -216,6 +216,7 @@ function PriceChart({ points, currency }: { points: PriceHistoryPoint[]; currenc
           />
           <YAxis
             domain={[yMin, yMax]}
+            ticks={[0, 100, 200, 300, 400, 500]}
             tick={{ fontSize: 10, fill: "#94a3b8", fontWeight: 700 }}
             axisLine={false}
             tickLine={false}
