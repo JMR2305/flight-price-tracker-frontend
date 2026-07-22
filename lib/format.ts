@@ -64,12 +64,15 @@ export function formatCurrency(
 
   const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
+  const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
   export function formatChartDate(iso: string): string {
     const d = new Date(iso);
-    const mmm = MONTHS[d.getMonth()];
     const dd  = String(d.getDate()).padStart(2, "0");
+    const mmm = MONTHS[d.getMonth()];
     const hh  = String(d.getHours()).padStart(2, "0");
-    return `${mmm}-${dd}:${hh}`;
+    const day = DAYS[d.getDay()];
+    return `${dd}-${mmm} (${hh}) | ${day}`;
   }
 
   export function formatINR(usdPrice: number | null | undefined, usdToInr: number): string {
